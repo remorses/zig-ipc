@@ -10,7 +10,7 @@ pub fn main() !void {
     var so = try Shared.init("ipc", false);
     defer so.deinit();
 
-    var rng = std.rand.Xoshiro256.init(@intCast(std.time.timestamp()));
+    var rng = std.Random.Xoshiro256.init(@intCast(std.time.timestamp()));
     var random = rng.random();
 
     var numbers: [N_FILL]u32 = undefined;

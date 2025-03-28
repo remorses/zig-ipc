@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
 
     const server = b.addExecutable(.{
         .name = "ipc-server",
-        .root_source_file = .{ .path = "server.zig" },
+        .root_source_file = .{ .cwd_relative = "server.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) void {
 
     const client = b.addExecutable(.{
         .name = "ipc-client",
-        .root_source_file = .{ .path = "client.zig" },
+        .root_source_file = .{ .cwd_relative = "client.zig" },
         .target = target,
         .optimize = optimize,
     });

@@ -1,6 +1,5 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const os = std.os;
 
 pub const Shared = struct {
     const Self = @This();
@@ -31,14 +30,22 @@ pub const Shared = struct {
             .create = create,
         };
 
-        var oflags: c_int = os.O.RDWR;
-        if (create) {
-            oflags |= os.O.CREAT | os.O.EXCL;
-        }
+        const oflags: c_int = if (create)
+            @as(c_int, @bitCast(std.posix.O{
+                .ACCMODE = .RDWR,
+                .CREAT = true,
+                .EXCL = true,
+            }))
+        else
+            @as(c_int, @bitCast(std.posix.O{
+                .ACCMODE = .RDWR,
+                .CREAT = false,
+                .EXCL = false,
+            }));
 
-        const rc = shm.open(name, oflags, os.S.IWUSR | os.S.IRUSR);
+        const rc = shm.open(name, oflags, std.posix.S.IWUSR | std.posix.S.IRUSR);
         if (rc < 0) {
-            return switch (os.errno(rc)) {
+            return switch (std.posix.errno(rc)) {
                 .ACCES => error.AccessDenied,
                 .EXIST => error.ShareExists,
                 .INVAL => error.InvalidName,
@@ -52,7 +59,14 @@ pub const Shared = struct {
             _ = std.c.ftruncate(rc, @sizeOf(Value));
         }
 
-        const raw_data = try os.mmap(null, @sizeOf(Value), os.PROT.READ | os.PROT.WRITE, os.MAP.SHARED, rc, 0);
+        const raw_data = try std.posix.mmap(
+            null,
+            @sizeOf(Value),
+            std.posix.PROT.READ | std.posix.PROT.WRITE,
+            std.c.MAP{ .TYPE = .SHARED },
+            rc,
+            0,
+        );
         self.ptr = @ptrCast(raw_data);
 
         if (create) {
@@ -65,7 +79,7 @@ pub const Shared = struct {
 
     pub fn deinit(self: *Self) void {
         const raw_data: [*]u8 = @ptrCast(self.ptr);
-        os.munmap(@alignCast(raw_data[0..@sizeOf(Value)]));
+        std.posix.munmap(@alignCast(raw_data[0..@sizeOf(Value)]));
         if (self.create) {
             _ = shm.unlink(self.name);
         }
@@ -73,7 +87,7 @@ pub const Shared = struct {
 
     pub inline fn lock(self: *Self, comptime value: bool) void {
         while (true) {
-            _ = @cmpxchgStrong(bool, &self.ptr.busy, !value, value, .SeqCst, .SeqCst) orelse break;
+            _ = @cmpxchgStrong(bool, &self.ptr.busy, !value, value, .seq_cst, .seq_cst) orelse break;
         }
     }
 
