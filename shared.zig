@@ -29,21 +29,20 @@ pub const Shared = struct {
             .ptr = undefined,
             .create = create,
         };
-
         const oflags: c_int = if (create)
-            @as(c_int, @bitCast(std.posix.O{
+            @bitCast(std.posix.O{
                 .ACCMODE = .RDWR,
                 .CREAT = true,
                 .EXCL = true,
-            }))
+            })
         else
-            @as(c_int, @bitCast(std.posix.O{
+            @bitCast(std.posix.O{
                 .ACCMODE = .RDWR,
                 .CREAT = false,
                 .EXCL = false,
-            }));
+            });
 
-        const rc = shm.open(name, oflags, std.posix.S.IWUSR | std.posix.S.IRUSR);
+        const rc = shm.open(name, oflags, std.posix.S.IRUSR | std.posix.S.IWUSR | std.posix.S.IXUSR);
         if (rc < 0) {
             return switch (std.posix.errno(rc)) {
                 .ACCES => error.AccessDenied,

@@ -13,10 +13,12 @@ pub fn main() !void {
     // CTRL+C to exit
     _ = c.signal(c.SIGINT, &handle_abort);
 
-    var so = Shared.init("ipc", true) catch |e| this: {
+    const name = "ipc-zig";
+    var so = Shared.init(name, true) catch |e| this: {
         if (e == error.ShareExists) {
-            _ = std.c.shm_unlink("ipc");
-            break :this try Shared.init("ipc", true);
+            _ = std.c.shm_unlink(name);
+            try stdout.print("Deleting existing share\n", .{});
+            break :this try Shared.init(name, true);
         }
         return e;
     };

@@ -7,7 +7,8 @@ const N_APPEND = 10;
 const MAX = 100;
 
 pub fn main() !void {
-    var so = try Shared.init("ipc", false);
+    const name = "ipc-zig";
+    var so = try Shared.init(name, false);
     defer so.deinit();
 
     var rng = std.Random.Xoshiro256.init(@intCast(std.time.timestamp()));
