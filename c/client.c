@@ -45,6 +45,7 @@ void append_number(Value* shared, uint32_t value) {
 
 int main() {
     // Open the shared memory object
+    printf("O_RDWR: %o\n", O_RDWR);
     int fd = shm_open(SHM_NAME, O_RDWR, 0666);
     if (fd == -1) {
         printf("shm_open failed: %s\n", strerror(errno));

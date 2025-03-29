@@ -28,6 +28,7 @@ int main() {
     shm_unlink(SHM_NAME);
 
     // Create the shared memory object
+    printf("O_CREAT | O_RDWR: %o\n", O_CREAT | O_RDWR);
     int fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if (fd == -1) {
         printf("shm_open failed: %s\n", strerror(errno));

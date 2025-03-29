@@ -25,7 +25,7 @@ pub const Shared = struct {
 
     pub fn init(_name: [*:0]const u8, comptime create: bool) !Self {
         _ = _name;
-        const name = "/tmp/some_name8";
+        const name = "/tmp/some_name9";
         var self: Self = .{
             .name = name,
             .ptr = undefined,
@@ -33,13 +33,17 @@ pub const Shared = struct {
         };
         const oflags: c_int = @bitCast(std.posix.O{
             .ACCMODE = .RDWR,
-            .CREAT = true,
-            .EXCL = false,
+            // .CREAT = true,
+            // .EXCL = false,
         });
+        if (create) {
+            _ = std.c.shm_unlink(name);
+        }
 
         const mode = std.posix.S.IRWXU | std.posix.S.IRWXG | std.posix.S.IRWXO;
         try std.io.getStdOut().writer().print("Share mode: {o:0>3}\n", .{mode});
-        const rc = std.c.shm_open(name, oflags, mode);
+
+        const rc = std.c.shm_open(name, oflags, 0o777);
         try std.io.getStdOut().writer().print("Share fd: {}\n", .{rc});
         if (rc < 0) {
             return switch (std.posix.errno(rc)) {
