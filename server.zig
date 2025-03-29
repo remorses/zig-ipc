@@ -13,7 +13,7 @@ pub fn main() !void {
     // CTRL+C to exit
     _ = c.signal(c.SIGINT, &handle_abort);
 
-    const name = "ipc-zig";
+    const name = "/ipc-zig2";
     var so = Shared.init(name, true) catch |e| this: {
         if (e == error.ShareExists) {
             _ = std.c.shm_unlink(name);

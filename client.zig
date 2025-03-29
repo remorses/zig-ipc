@@ -7,7 +7,7 @@ const N_APPEND = 10;
 const MAX = 100;
 
 pub fn main() !void {
-    const name = "ipc-zig";
+    const name = "/ipc-zig2";
     var so = try Shared.init(name, false);
     defer so.deinit();
 

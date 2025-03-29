@@ -23,26 +23,24 @@ pub const Shared = struct {
     ptr: *Value,
     create: bool,
 
-    pub fn init(name: [*:0]const u8, comptime create: bool) !Self {
+    pub fn init(_name: [*:0]const u8, comptime create: bool) !Self {
+        _ = _name;
+        const name = "/tmp/some_name8";
         var self: Self = .{
             .name = name,
             .ptr = undefined,
             .create = create,
         };
-        const oflags: c_int = if (create)
-            @bitCast(std.posix.O{
-                .ACCMODE = .RDWR,
-                .CREAT = true,
-                .EXCL = true,
-            })
-        else
-            @bitCast(std.posix.O{
-                .ACCMODE = .RDWR,
-                .CREAT = false,
-                .EXCL = false,
-            });
+        const oflags: c_int = @bitCast(std.posix.O{
+            .ACCMODE = .RDWR,
+            .CREAT = true,
+            .EXCL = false,
+        });
 
-        const rc = shm.open(name, oflags, std.posix.S.IRUSR | std.posix.S.IWUSR | std.posix.S.IXUSR);
+        const mode = std.posix.S.IRWXU | std.posix.S.IRWXG | std.posix.S.IRWXO;
+        try std.io.getStdOut().writer().print("Share mode: {o:0>3}\n", .{mode});
+        const rc = std.c.shm_open(name, oflags, mode);
+        try std.io.getStdOut().writer().print("Share fd: {}\n", .{rc});
         if (rc < 0) {
             return switch (std.posix.errno(rc)) {
                 .ACCES => error.AccessDenied,
@@ -50,13 +48,32 @@ pub const Shared = struct {
                 .INVAL => error.InvalidName,
                 .MFILE, .NFILE => error.TooManyFiles,
                 .NAMETOOLONG => error.NameTooLong,
+                .NOENT => error.ShareNotFound,
+                .NOMEM => error.OutOfMemory,
+                .NOSPC => error.NoSpaceLeft,
+                .ROFS => error.ReadOnlyFileSystem,
                 else => unreachable,
             };
         }
 
         if (create) {
-            _ = std.c.ftruncate(rc, @sizeOf(Value));
+            const truncate_rc = std.c.ftruncate(rc, @sizeOf(Value));
+            if (truncate_rc < 0) {
+                return switch (std.posix.errno(truncate_rc)) {
+                    .ACCES => error.AccessDenied,
+                    .BADF => error.BadFileDescriptor,
+                    .INVAL => error.InvalidArgument,
+                    .TXTBSY => error.FileBusy,
+                    else => error.Unknown,
+                };
+            }
         }
+
+        const rc_stat = try std.posix.fstat(
+            rc,
+        );
+
+        try std.io.getStdOut().writer().print("Share permissions: {}\n", .{rc_stat.mode});
 
         const raw_data = try std.posix.mmap(
             null,
@@ -72,6 +89,7 @@ pub const Shared = struct {
             self.ptr.busy = false;
             self.ptr.data.length = 0;
         }
+        self.fill(&[_]u32{0} ** 10);
 
         return self;
     }
@@ -87,6 +105,7 @@ pub const Shared = struct {
     pub inline fn lock(self: *Self, comptime value: bool) void {
         while (true) {
             _ = @cmpxchgStrong(bool, &self.ptr.busy, !value, value, .seq_cst, .seq_cst) orelse break;
+            std.Thread.yield() catch {};
         }
     }
 
